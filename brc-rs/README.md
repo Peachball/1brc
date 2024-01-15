@@ -14,6 +14,7 @@ On small refurbished laptop linux:
       253s
     - v5 (try manual parsing + custom buffered reader): 121s
     - v6 (custom hashmap): 64s
+    - v7 (use i32 for parsing): 65s
 
 ## Summary of techniques used by others
 
