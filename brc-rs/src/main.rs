@@ -5,7 +5,11 @@ mod solve_v4;
 mod solve_v5;
 mod solve_v6;
 mod solve_v7;
+mod solve_v8;
+mod solve_v9;
 
+use solve_v9::solve_v9;
+use solve_v8::solve_v8;
 use solve_v7::solve_v7;
 use solve_v6::solve_v6;
 use solve_v5::solve_v5;
@@ -26,5 +30,5 @@ pub fn write_string_to_output(s: &str) {
 }
 
 fn main() {
-  solve_v7();
+  solve_v9();
 }

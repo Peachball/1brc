@@ -15,14 +15,20 @@ On small refurbished laptop linux:
     - v5 (try manual parsing + custom buffered reader): 121s
     - v6 (custom hashmap): 64s
     - v7 (use i32 for parsing): 65s
+    - v8 (based off v6 + use mmap): 58s
+    - v9 (do stuff based off perf)
+      - remove option based on perf report: 58.4s
+      - use i16 everywhere: 56.8s
+      - change hashing function: 53.5s
+      - hardcoded parsing: 50s
 
 ## Summary of techniques used by others
 
-Technique:
+Technique, from most influential to least:
   - avoid memory allocations/string/utf8
   - custom hash table + fnv-a hashing
-  - mmap files
   - multithreading
+  - mmap files
   - use perf
     - `perf annotate` + `perf report` can check which specific instructions were
       run the most
@@ -30,6 +36,12 @@ Technique:
       - which instruction is taking long
       - cpu cache performance
       * useful guide [1]
+
+Notes
+  - mmaping doesn't really help on small laptop -- small laptop has slow cpu +
+    slow memory which is main bottleneck. larger computers will effectively
+    store entire file in memory
+
 
 ## References
 
