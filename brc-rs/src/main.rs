@@ -24,5 +24,5 @@ pub fn write_string_to_output(s: &str) {
 }
 
 fn main() {
-  solve_v5();
+  solve_v6();
 }

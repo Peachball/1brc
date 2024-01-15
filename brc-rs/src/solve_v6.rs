@@ -10,11 +10,23 @@ use crate::{
   write_string_to_output, MAX_STATION_NAMES, MAX_STATION_NAME_LEN, MEASUREMENTS,
 };
 
+#[derive(Copy, Clone)]
 struct Record {
   total: f32,
   min: f32,
   max: f32,
   num: usize,
+}
+
+impl Record {
+  fn new() -> Self {
+    Self {
+      total: 0.0,
+      min: f32::INFINITY,
+      max: f32::NEG_INFINITY,
+      num: 0,
+    }
+  }
 }
 
 const BUFSIZE: usize = 1024 * 4;
@@ -49,6 +61,7 @@ impl RawBufReader {
     self.current_ind = 0;
   }
 
+  #[inline]
   fn next_char(&mut self) -> u8 {
     // check if should read
     let result = self.buffer[self.current_ind];
@@ -81,13 +94,124 @@ fn parse_temperature(reader: &mut RawBufReader) -> f32 {
   }
 }
 
+#[derive(Clone, Copy)]
+struct MapStrRef {
+  start: usize,
+  end: usize,
+}
+
+#[derive(Clone, Copy)]
+struct MapKvPair {
+  key: MapStrRef,
+  value: Record,
+}
+
+impl MapKvPair {
+  fn new() -> Self {
+    Self {
+      key: MapStrRef { start: 0, end: 0 },
+      value: Record::new(),
+    }
+  }
+}
+
+const MAP_LOAD_FACTOR: f64 = 2.0;
+const MAP_NAME_SIZE: usize = MAX_STATION_NAMES * MAX_STATION_NAME_LEN;
+const MAP_ENTRIES: usize =
+  (MAX_STATION_NAMES as f64 * MAP_LOAD_FACTOR) as usize;
+
+/// fnv a hash
+fn fnv_hash(value: &[u8]) -> usize {
+  const FNV_PRIME: u64 = 1099511628211;
+  const FNV_OFFSET_BASIS: u64 = 14695981039346656037;
+  let mut result = FNV_OFFSET_BASIS;
+
+  for b in value {
+    result = result ^ *b as u64;
+    result *= FNV_PRIME;
+  }
+
+  result as usize
+}
+
 struct FixedSizeMap {
-  names: [u8; MAX_STATION_NAMES * MAX_STATION_NAME_LEN],
+  names: [u8; MAP_NAME_SIZE],
+  entries: [Option<MapKvPair>; MAP_ENTRIES],
+  last_name_idx: usize,
+}
+
+impl FixedSizeMap {
+  fn new() -> Self {
+    Self {
+      names: [0; MAP_NAME_SIZE],
+      entries: [None; MAP_ENTRIES],
+      last_name_idx: 0,
+    }
+  }
+
+  fn get_or_insert(&mut self, name: &[u8]) -> usize {
+    let hash = fnv_hash(name);
+    let mut idx = hash % self.entries.len();
+    loop {
+      if self.entries[idx].is_none() {
+        let name_start = self.last_name_idx;
+        let name_end = self.last_name_idx + name.len();
+        let key = MapStrRef {
+          start: name_start,
+          end: name_end,
+        };
+        for i in 0..name.len() {
+          self.names[i + name_start] = name[i];
+        }
+        self.last_name_idx = name_end;
+        let kvpair = MapKvPair {
+          key,
+          value: Record::new(),
+        };
+        self.entries[idx] = Some(kvpair);
+        return idx;
+      }
+      let mut entry = self.entries[idx].unwrap();
+
+      // linear probing
+      if &self.names[entry.key.start..entry.key.end] != name {
+        idx = (idx + 1) % self.entries.len();
+        continue;
+      }
+
+      return idx;
+    }
+  }
+
+  fn get(&self, name: &[u8]) -> Record {
+    let hash = fnv_hash(name);
+    let mut idx = hash % self.entries.len();
+    loop {
+      let entry = &self.entries[idx].unwrap();
+
+      // linear probing
+      if &self.names[entry.key.start..entry.key.end] != name {
+        idx = (idx + 1) % self.entries.len();
+        continue;
+      }
+
+      return entry.value;
+    }
+  }
+
+  fn keys(&self) -> Vec<&[u8]> {
+    self
+      .entries
+      .iter()
+      .filter_map(|e| e.as_ref())
+      .map(|e| &self.names[e.key.start..e.key.end])
+      .collect()
+  }
 }
 
 /// custom hashmap
 pub fn solve_v6() {
-  let mut station_values: HashMap<Vec<u8>, Record> = HashMap::new();
+  let mut station_values = FixedSizeMap::new();
   let file = File::open(MEASUREMENTS).unwrap();
   let mut bufreader = RawBufReader::new(file);
 
@@ -106,27 +230,20 @@ pub fn solve_v6() {
     let value = parse_temperature(&mut bufreader);
 
     let station_name = &station_name_buffer[..station_name_buffer_ind];
-    let value_entry =
-      station_values
-        .entry(station_name.to_vec())
-        .or_insert(Record {
-          total: 0.0,
-          min: f32::INFINITY,
-          max: f32::NEG_INFINITY,
-          num: 0,
-        });
+    let value_idx = station_values.get_or_insert(station_name);
+    let value_entry = &mut station_values.entries[value_idx].as_mut().unwrap().value;
     value_entry.total += value;
     value_entry.min = value_entry.min.min(value);
     value_entry.max = value_entry.max.max(value);
     value_entry.num += 1;
   }
   println!("Summing");
-  let mut station_keys: Vec<_> = station_values.keys().collect();
+  let mut station_keys: Vec<_> = station_values.keys();
   station_keys.sort();
   let mut result = String::new();
   result.push_str("{");
-  for (i, key) in station_keys.into_iter().enumerate() {
-    let values = station_values.get(key).unwrap();
+  for (i, key) in station_keys.iter().enumerate() {
+    let values = station_values.get(key);
     let min = values.min;
     let avg = values.total / values.num as f32;
     let max = values.max;

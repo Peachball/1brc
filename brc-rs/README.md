@@ -13,10 +13,15 @@ On small refurbished laptop linux:
     - v4 (1 thread + normal reader + not stupid way of storing partial sums):
       253s
     - v5 (try manual parsing + custom buffered reader): 121s
+    - v6 (custom hashmap): 64s
 
 ## Summary of techniques used by others
 
 Technique:
+  - avoid memory allocations/string/utf8
+  - custom hash table + fnv-a hashing
+  - mmap files
+  - multithreading
   - use perf
     - `perf annotate` + `perf report` can check which specific instructions were
       run the most
@@ -24,9 +29,6 @@ Technique:
       - which instruction is taking long
       - cpu cache performance
       * useful guide [1]
-  - mmap files
-  - multithreading
-  - custom hash table + fnv-a hashing
 
 ## References
 
