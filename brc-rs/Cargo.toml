@@ -11,3 +11,4 @@ debug = true
 [dependencies]
 ordered-float = "4"
 memmap2 = "0.9"
+memchr = "2"

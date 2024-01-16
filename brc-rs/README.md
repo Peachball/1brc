@@ -2,6 +2,25 @@ Rust implementation of brc
 
 ## Benchmarks
 
+On big gtx
+  - `calculate_average_royvanrijn.sh`: 4.88s
+  - 1brc-simd (cpp solution)
+    - 32 threads: 0.48s
+    - 8 threads: 1.32s
+    - 1 thread: 8.79s
+  - reference cheating rust solution [2]: 0.307s
+    - 1 thread: 3.90s
+  - my solutions:
+    - v3: 6.96s
+    - v4: 75.67
+    - v5: 37.27
+    - v6: 20.8s
+    - v7: 19.94
+    - v8: 18.9s
+    - v9: 20.07s
+    - v10 (memchr crate): 16.82s - 17.19s
+  - my basic single threaded cpp solution:
+
 On small refurbished laptop linux:
   - `calculate_average_royvanrijn.sh`: 29s
   - 1brc-simd (cpp solution) 8 threads: 24s
@@ -32,9 +51,10 @@ Technique, from most influential to least:
   - use perf
     - `perf annotate` + `perf report` can check which specific instructions were
       run the most
+      - determine instruction is taking long
     - use `perf stat -d` to check useful stats like
-      - which instruction is taking long
       - cpu cache performance
+      - branch misses
       * useful guide [1]
 
 Notes
@@ -46,3 +66,4 @@ Notes
 ## References
 
 [1]: https://rust-lang.github.io/packed_simd/perf-guide/prof/linux.html
+[2]: https://curiouscoding.nl/posts/1brc/
