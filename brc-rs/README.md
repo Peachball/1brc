@@ -49,9 +49,14 @@ Technique, from most influential to least:
   - multithreading
   - mmap files
   - use perf
-    - `perf annotate` + `perf report` can check which specific instructions were
+    - `perf record` + `perf report` can check which specific instructions were
       run the most
       - determine instruction is taking long
+      - can also measure other cpu statistics + which instructions cause them
+        (see `perf list` for complete list). In particular, other cool events
+        are:
+        - branch-misses
+        - cache-misses
     - use `perf stat -d` to check useful stats like
       - cpu cache performance
       - branch misses

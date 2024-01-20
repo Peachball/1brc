@@ -112,18 +112,18 @@ impl MapKvPair {
   }
 }
 
-const MAP_LOAD_FACTOR: f64 = 2.0;
-const MAP_NAME_SIZE: usize = MAX_STATION_NAMES * MAX_STATION_NAME_LEN;
-const MAP_ENTRIES: usize = (MAX_STATION_NAMES as f64 * MAP_LOAD_FACTOR) as usize;
+const MAP_NAME_SIZE: usize = 1048576;
+const MAP_ENTRIES: usize = 16384;
 
 /// fnv a hash
 fn fnv_hash(value: &[u8]) -> usize {
-  const FNV_PRIME: u64 = 1099511628211;
-  let mut key = [0u8; 8];
   let l = value.len().min(8);
-  key[..l].copy_from_slice(&value[..l]);
-  key[0] ^= value.len() as u8;
-  (u64::from_le_bytes(key) * FNV_PRIME) as usize
+  let mut conv_key = 0;
+  for i in 0..l {
+    conv_key |= (value[i] as u64) << (8*i);
+  }
+  conv_key ^= value.len() as u64;
+  (conv_key * 16381) as usize
 }
 
 struct FixedSizeMap {
@@ -145,7 +145,7 @@ impl FixedSizeMap {
     let hash = fnv_hash(name);
     let mut idx = hash % self.entries.len();
     loop {
-      let cur_entry = &mut self.entries[idx];
+      let cur_entry = unsafe { self.entries.get_unchecked_mut(idx) };
       if cur_entry.key.start == 0 && cur_entry.key.end == 0 {
         let name_start = self.last_name_idx;
         let name_end = self.last_name_idx + name.len();
